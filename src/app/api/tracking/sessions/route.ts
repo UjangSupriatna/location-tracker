@@ -13,8 +13,13 @@ export async function GET() {
       );
     }
 
+    // Build URL with user info for filtering
+    const url = new URL(`${API_ENDPOINTS.getAllSessions}?api_key=${API_KEY_PRIVATE}`);
+    url.searchParams.append('user_google_id', user.googleId);
+    url.searchParams.append('role_id', user.roleId.toString());
+
     // Call external API to get all sessions
-    const response = await fetch(`${API_ENDPOINTS.getAllSessions}?api_key=${API_KEY_PRIVATE}`, {
+    const response = await fetch(url.toString(), {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -30,7 +35,7 @@ export async function GET() {
       );
     }
 
-    // PHP response: { status, message, data: [{ id, token, target_name, expire_at, is_active, last_location, last_online }] }
+    // PHP response: { status, message, data: [{ id, token, target_name, user_google_id, expire_at, is_active, last_location, last_online }] }
     const sessions = (data.data || []).map((session: Record<string, unknown>) => {
       const lastLocation = session.last_location as Record<string, unknown> | null;
       const lastOnline = session.last_online as string | null;
@@ -39,6 +44,7 @@ export async function GET() {
         id: session.id,
         name: session.target_name,
         token: session.token,
+        userId: session.user_google_id,
         isActive: session.is_active === 1 || session.is_active === true,
         lastOnline: lastOnline,
         createdAt: session.created_at || new Date(),

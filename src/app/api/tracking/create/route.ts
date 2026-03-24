@@ -24,7 +24,6 @@ export async function POST(request: Request) {
     }
 
     // Call external API to create session
-    // PHP API expects: target_name, expire_at (optional)
     const response = await fetch(`${API_ENDPOINTS.createSession}?api_key=${API_KEY_PRIVATE}`, {
       method: 'POST',
       headers: {
@@ -32,6 +31,7 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         target_name: name.trim(),
+        user_google_id: user.googleId, // Kirim user id yang membuat link
       }),
     });
 
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // PHP response: { status, message, data: { token, target_name, expire_at, is_active } }
+    // PHP response: { status, message, data: { id, token, target_name, user_google_id, expire_at, is_active } }
     const sessionData = data.data;
 
     return NextResponse.json({

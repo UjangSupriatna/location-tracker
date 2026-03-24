@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { API_ENDPOINTS, API_KEY_PUBLIC, API_KEY_PRIVATE } from '@/lib/api';
-import { getAuthUser } from '@/lib/auth-server';
 
 export async function GET(
   request: Request,
@@ -13,14 +12,6 @@ export async function GET(
 
     // For history, use private key and get_locations endpoint
     if (isHistory) {
-      const user = await getAuthUser();
-      if (!user) {
-        return NextResponse.json(
-          { status: false, message: 'Unauthorized' },
-          { status: 401 }
-        );
-      }
-
       const response = await fetch(`${API_ENDPOINTS.getLocations}?token=${token}&api_key=${API_KEY_PRIVATE}`, {
         method: 'GET',
         headers: {
@@ -68,24 +59,17 @@ export async function GET(
       );
     }
 
-    // PHP response: { status, message, data: { id, token, target_name, expire_at, is_active } }
+    // PHP response: { status, message, data: { id, token, target_name, expire_at, is_active, last_location } }
     const sessionData = data.data;
+    const lastLocation = sessionData.last_location as Record<string, unknown> | null;
 
-    // Get locations history for this session
-    const historyResponse = await fetch(`${API_ENDPOINTS.getLocations}?token=${token}&api_key=${API_KEY_PRIVATE}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    const historyData = await historyResponse.json();
-    const locations = (historyData.data || []).map((loc: Record<string, unknown>) => ({
-      latitude: loc.latitude,
-      longitude: loc.longitude,
-      accuracy: loc.accuracy,
-      timestamp: loc.created_at,
-    }));
+    // Convert last_location to locations array for compatibility
+    const locations = lastLocation ? [{
+      latitude: lastLocation.latitude,
+      longitude: lastLocation.longitude,
+      accuracy: lastLocation.accuracy,
+      timestamp: lastLocation.created_at,
+    }] : [];
 
     return NextResponse.json({
       success: true,

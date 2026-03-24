@@ -54,3 +54,13 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# Additional ignores
+.zscripts/
+db/
+upload/
+worklog.md
+Caddyfile
+mini-services/
+examples/
+*.log
