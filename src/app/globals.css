@@ -106,12 +106,22 @@
 
 /* ========== CYBERPUNK THEME ========== */
 
-/* Main Background */
+/* Main Background with animated grid */
 .cyber-bg {
-  background: linear-gradient(180deg, #0a0a12 0%, #0d0d1a 50%, #0a0a12 100%);
+  background: 
+    linear-gradient(180deg, #0a0a12 0%, #0d0d1a 50%, #0a0a12 100%),
+    linear-gradient(90deg, rgba(0,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(rgba(0,255,255,0.03) 1px, transparent 1px);
+  background-size: 100% 100%, 50px 50px, 50px 50px;
+  animation: gridMove 20s linear infinite;
 }
 
-/* Scanlines - Simple static version */
+@keyframes gridMove {
+  0% { background-position: 0 0, 0 0, 0 0; }
+  100% { background-position: 0 0, 50px 50px, 50px 50px; }
+}
+
+/* Animated Scanlines */
 .scanlines::before {
   content: '';
   position: fixed;
@@ -128,34 +138,95 @@
   );
   pointer-events: none;
   z-index: 1000;
+  animation: scanlineMove 8s linear infinite;
 }
 
-/* Glitch Effect - Static, no animation */
+@keyframes scanlineMove {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(4px); }
+}
+
+/* Scanline flash effect */
+.scanlines::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(0,255,255,0.3), transparent);
+  pointer-events: none;
+  z-index: 1001;
+  animation: scanFlash 4s ease-in-out infinite;
+}
+
+@keyframes scanFlash {
+  0%, 100% { top: 0; opacity: 0; }
+  50% { opacity: 0.5; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* Glitch Effect */
 .glitch {
   position: relative;
+  animation: glitch 3s infinite;
 }
 
-/* Neon Text - Simple glow, no animation */
+@keyframes glitch {
+  0%, 90%, 100% { transform: translate(0); }
+  92% { transform: translate(-2px, 1px); }
+  94% { transform: translate(2px, -1px); }
+  96% { transform: translate(-1px, 2px); }
+  98% { transform: translate(1px, -2px); }
+}
+
+/* Neon Text with Pulse */
 .neon-cyan {
   color: var(--cyber-cyan);
-  text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+  text-shadow: 
+    0 0 5px rgba(0, 255, 255, 0.5),
+    0 0 10px rgba(0, 255, 255, 0.3);
+  animation: neonPulse 2s ease-in-out infinite;
 }
 
 .neon-magenta {
   color: var(--cyber-magenta);
-  text-shadow: 0 0 10px rgba(255, 0, 255, 0.5);
+  text-shadow: 
+    0 0 5px rgba(255, 0, 255, 0.5),
+    0 0 10px rgba(255, 0, 255, 0.3);
+  animation: neonPulseMagenta 2s ease-in-out infinite;
 }
 
 .neon-yellow {
   color: var(--cyber-yellow);
-  text-shadow: 0 0 10px rgba(255, 255, 0, 0.5);
+  text-shadow: 
+    0 0 5px rgba(255, 255, 0, 0.5),
+    0 0 10px rgba(255, 255, 0, 0.3);
 }
 
-/* Cyber Card - Simple */
+@keyframes neonPulse {
+  0%, 100% { text-shadow: 0 0 5px rgba(0, 255, 255, 0.5), 0 0 10px rgba(0, 255, 255, 0.3); }
+  50% { text-shadow: 0 0 10px rgba(0, 255, 255, 0.8), 0 0 20px rgba(0, 255, 255, 0.5); }
+}
+
+@keyframes neonPulseMagenta {
+  0%, 100% { text-shadow: 0 0 5px rgba(255, 0, 255, 0.5), 0 0 10px rgba(255, 0, 255, 0.3); }
+  50% { text-shadow: 0 0 10px rgba(255, 0, 255, 0.8), 0 0 20px rgba(255, 0, 255, 0.5); }
+}
+
+/* Cyber Card with glow pulse */
 .cyber-card {
   background: rgba(10, 15, 25, 0.9);
   border: 1px solid rgba(0, 255, 255, 0.3);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.cyber-card:hover {
+  border-color: rgba(0, 255, 255, 0.5);
+  box-shadow: 
+    0 4px 20px rgba(0, 0, 0, 0.3),
+    0 0 15px rgba(0, 255, 255, 0.1);
 }
 
 /* Animated Border */
@@ -180,18 +251,38 @@
   color: var(--cyber-cyan);
   text-transform: uppercase;
   letter-spacing: 1px;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.cyber-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0,255,255,0.2), transparent);
+  animation: btnShine 3s infinite;
+}
+
+@keyframes btnShine {
+  0% { left: -100%; }
+  50%, 100% { left: 100%; }
 }
 
 .cyber-btn:hover {
   background: rgba(0, 255, 255, 0.2);
   border-color: var(--cyber-cyan);
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
 }
 
-/* Status Indicators */
+/* Status Indicators with pulse */
 .status-online {
   background: var(--cyber-green);
   box-shadow: 0 0 8px var(--cyber-green);
+  animation: statusPulse 1.5s ease-in-out infinite;
 }
 
 .status-offline {
@@ -202,15 +293,44 @@
 .status-pending {
   background: var(--cyber-yellow);
   box-shadow: 0 0 8px var(--cyber-yellow);
+  animation: statusPulse 1s ease-in-out infinite;
 }
 
-/* Simple card highlight */
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+/* Holographic card effect */
 .holographic {
   background: rgba(0, 255, 255, 0.05);
   border: 1px solid rgba(0, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
 }
 
-/* Data Stream - static */
+.holographic::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(0, 255, 255, 0.05) 50%,
+    transparent 70%
+  );
+  animation: holographicMove 4s linear infinite;
+}
+
+@keyframes holographicMove {
+  0% { transform: translateX(-50%) translateY(-50%) rotate(0deg); }
+  100% { transform: translateX(-50%) translateY(-50%) rotate(360deg); }
+}
+
+/* Data Stream */
 .data-stream {
   border-top: 2px solid rgba(0, 255, 255, 0.3);
 }
@@ -299,16 +419,6 @@
   font-family: 'Orbitron', 'Rajdhani', monospace;
 }
 
-/* Float removed */
-.float {
-  /* static */
-}
-
-/* Pulse Ring - removed */
-.pulse-ring {
-  /* static */
-}
-
 /* HUD Corner */
 .hud-corner {
   position: relative;
@@ -337,4 +447,69 @@
   border-top: none;
 }
 
-/* Removed heavy animations */
+/* Floating animation for cards */
+.cyber-float {
+  animation: cyberFloat 3s ease-in-out infinite;
+}
+
+@keyframes cyberFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+/* Corner decorations animation */
+.corner-decor {
+  position: relative;
+}
+
+.corner-decor::before,
+.corner-decor::after {
+  content: '';
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  border: 2px solid var(--cyber-cyan);
+  animation: cornerPulse 2s ease-in-out infinite;
+}
+
+.corner-decor::before {
+  top: -2px;
+  left: -2px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.corner-decor::after {
+  bottom: -2px;
+  right: -2px;
+  border-left: none;
+  border-top: none;
+  animation-delay: 1s;
+}
+
+@keyframes cornerPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Data line animation */
+.data-line {
+  position: relative;
+  overflow: hidden;
+}
+
+.data-line::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cyber-cyan), transparent);
+  animation: dataFlow 2s linear infinite;
+}
+
+@keyframes dataFlow {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
