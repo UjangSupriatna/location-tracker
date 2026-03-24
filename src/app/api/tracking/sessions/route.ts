@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuthUser, isAdmin } from '@/lib/auth-server';
-import { API_ENDPOINTS, API_KEY_PRIVATE, API_KEY_PUBLIC } from '@/lib/api';
+import { API_ENDPOINTS, API_KEY_PRIVATE } from '@/lib/api';
 
 export async function GET() {
   try {
@@ -8,13 +8,13 @@ export async function GET() {
     
     if (!user) {
       return NextResponse.json(
-        { error: 'Unauthorized', success: false },
+        { status: false, message: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    // Call external API to get sessions
-    const response = await fetch(`${API_ENDPOINTS.getSession}?api_key=${API_KEY_PRIVATE}&user_google_id=${user.googleId}`, {
+    // Call external API to get all sessions
+    const response = await fetch(`${API_ENDPOINTS.getAllSessions}?api_key=${API_KEY_PRIVATE}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -23,44 +23,39 @@ export async function GET() {
 
     const data = await response.json();
 
-    if (!response.ok) {
+    if (!response.ok || !data.status) {
       return NextResponse.json(
-        { error: data.message || 'Failed to fetch sessions', success: false },
+        { status: false, message: data.message || 'Failed to fetch sessions' },
         { status: response.status }
       );
     }
 
-    // Format sessions
-    const sessions = (data.data || data.sessions || []).map((session: Record<string, unknown>) => {
-      const lastLocation = session.last_location || session.lastLocation;
-      const lastOnline = session.last_online || session.lastOnline;
+    // PHP response: { status, message, data: [{ id, token, target_name, expire_at, is_active, last_location, last_online }] }
+    const sessions = (data.data || []).map((session: Record<string, unknown>) => {
+      const lastLocation = session.last_location as Record<string, unknown> | null;
+      const lastOnline = session.last_online as string | null;
       
       return {
-        id: session.id || session.token,
-        name: session.name,
+        id: session.id,
+        name: session.target_name,
         token: session.token,
-        isActive: session.is_active ?? session.isActive ?? true,
-        lastOnline: lastOnline ? new Date(lastOnline as string) : null,
-        createdAt: session.created_at || session.createdAt || new Date(),
-        expiresAt: session.expires_at || session.expiresAt,
-        isOnline: lastOnline ? (new Date().getTime() - new Date(lastOnline as string).getTime()) < 30000 : false,
+        isActive: session.is_active === 1 || session.is_active === true,
+        lastOnline: lastOnline,
+        createdAt: session.created_at || new Date(),
+        expiresAt: session.expire_at,
+        isOnline: lastOnline ? (new Date().getTime() - new Date(lastOnline).getTime()) < 30000 : false,
         lastLocation: lastLocation ? {
-          latitude: (lastLocation as Record<string, number>).latitude,
-          longitude: (lastLocation as Record<string, number>).longitude,
-          accuracy: (lastLocation as Record<string, number>).accuracy,
-          timestamp: (lastLocation as Record<string, string>).timestamp || new Date(),
+          latitude: lastLocation.latitude as number,
+          longitude: lastLocation.longitude as number,
+          accuracy: lastLocation.accuracy as number | undefined,
+          timestamp: lastLocation.created_at as string,
         } : null,
       };
     });
 
-    // Filter by user if not admin
-    const filteredSessions = isAdmin(user.roleId) 
-      ? sessions 
-      : sessions.filter((s: { userId?: string }) => !s.userId || s.userId === user.googleId);
-
     return NextResponse.json({
       success: true,
-      sessions: filteredSessions,
+      sessions: sessions,
       user: {
         roleId: user.roleId,
         isAdmin: isAdmin(user.roleId),
@@ -69,7 +64,7 @@ export async function GET() {
   } catch (error) {
     console.error('Error fetching sessions:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch sessions', success: false },
+      { status: false, message: 'Failed to fetch sessions' },
       { status: 500 }
     );
   }

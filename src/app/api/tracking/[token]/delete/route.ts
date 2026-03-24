@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAuthUser, isAdmin } from '@/lib/auth-server';
+import { getAuthUser } from '@/lib/auth-server';
 import { API_ENDPOINTS, API_KEY_PRIVATE } from '@/lib/api';
 
 export async function DELETE(
@@ -11,7 +11,7 @@ export async function DELETE(
     
     if (!user) {
       return NextResponse.json(
-        { error: 'Unauthorized', success: false },
+        { status: false, message: 'Unauthorized' },
         { status: 401 }
       );
     }
@@ -19,9 +19,8 @@ export async function DELETE(
     const { token } = await params;
 
     // Call external API to delete session
-    // Note: You may need to provide the actual delete endpoint
-    const response = await fetch(`${API_ENDPOINTS.getSession}?token=${token}&api_key=${API_KEY_PRIVATE}&delete=1`, {
-      method: 'DELETE',
+    const response = await fetch(`${API_ENDPOINTS.deleteSession}?token=${token}&api_key=${API_KEY_PRIVATE}`, {
+      method: 'GET', // PHP uses GET for delete based on typical CodeIgniter pattern
       headers: {
         'Content-Type': 'application/json',
       },
@@ -29,21 +28,21 @@ export async function DELETE(
 
     const data = await response.json();
 
-    if (!response.ok) {
+    if (!response.ok || !data.status) {
       return NextResponse.json(
-        { error: data.message || 'Failed to delete session', success: false },
+        { status: false, message: data.message || 'Failed to delete session' },
         { status: response.status }
       );
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Session deleted successfully',
+      message: 'Session dihapus',
     });
   } catch (error) {
     console.error('Error deleting session:', error);
     return NextResponse.json(
-      { error: 'Failed to delete session', success: false },
+      { status: false, message: 'Failed to delete session' },
       { status: 500 }
     );
   }

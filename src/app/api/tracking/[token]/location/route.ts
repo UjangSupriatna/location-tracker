@@ -12,12 +12,13 @@ export async function POST(
 
     if (typeof latitude !== 'number' || typeof longitude !== 'number') {
       return NextResponse.json(
-        { error: 'Latitude and longitude are required', success: false },
+        { status: false, message: 'data tidak lengkap' },
         { status: 400 }
       );
     }
 
     // Call external API to save location
+    // PHP expects: token, latitude, longitude, accuracy
     const response = await fetch(`${API_ENDPOINTS.saveLocation}?api_key=${API_KEY_PUBLIC}`, {
       method: 'POST',
       headers: {
@@ -33,21 +34,21 @@ export async function POST(
 
     const data = await response.json();
 
-    if (!response.ok) {
+    if (!response.ok || !data.status) {
       return NextResponse.json(
-        { error: data.message || 'Failed to save location', success: false },
+        { status: false, message: data.message || 'Failed to save location' },
         { status: response.status }
       );
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Location saved',
+      message: 'Lokasi tersimpan',
     });
   } catch (error) {
     console.error('Error saving location:', error);
     return NextResponse.json(
-      { error: 'Failed to save location', success: false },
+      { status: false, message: 'Failed to save location' },
       { status: 500 }
     );
   }

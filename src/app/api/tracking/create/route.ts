@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     
     if (!user) {
       return NextResponse.json(
-        { error: 'Unauthorized', success: false },
+        { status: false, message: 'Unauthorized' },
         { status: 401 }
       );
     }
@@ -18,49 +18,48 @@ export async function POST(request: Request) {
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return NextResponse.json(
-        { error: 'Name is required', success: false },
+        { status: false, message: 'target_name wajib' },
         { status: 400 }
       );
     }
 
     // Call external API to create session
+    // PHP API expects: target_name, expire_at (optional)
     const response = await fetch(`${API_ENDPOINTS.createSession}?api_key=${API_KEY_PRIVATE}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        name: name.trim(),
-        user_google_id: user.googleId,
-        user_email: user.email,
-        user_name: user.name,
+        target_name: name.trim(),
       }),
     });
 
     const data = await response.json();
 
-    if (!response.ok) {
+    if (!response.ok || !data.status) {
       return NextResponse.json(
-        { error: data.message || 'Failed to create session', success: false },
+        { status: false, message: data.message || 'Failed to create session' },
         { status: response.status }
       );
     }
 
-    const sessionData = data.data || data.session || data;
+    // PHP response: { status, message, data: { token, target_name, expire_at, is_active } }
+    const sessionData = data.data;
 
     return NextResponse.json({
       success: true,
       session: {
         id: sessionData.id || sessionData.token,
-        name: sessionData.name,
+        name: sessionData.target_name,
         token: sessionData.token,
-        expiresAt: sessionData.expires_at || sessionData.expiresAt,
+        expiresAt: sessionData.expire_at,
       },
     });
   } catch (error) {
     console.error('Error creating tracking session:', error);
     return NextResponse.json(
-      { error: 'Failed to create tracking session', success: false },
+      { status: false, message: 'Failed to create tracking session' },
       { status: 500 }
     );
   }
