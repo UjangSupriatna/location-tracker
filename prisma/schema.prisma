@@ -6,14 +6,15 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_DIRECT")
 }
 
 model User {
   id             String   @id @default(cuid())
   googleId       String   @unique
-  externalId     Int?     // ID from external API
+  externalId     Int?
   name           String?
   email          String   @unique
   image          String?
@@ -33,7 +34,7 @@ model TrackingSession {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   expiresAt    DateTime?
-  userId       String?  // Owner of this tracking session
+  userId       String?
   
   user         User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   locations    LocationHistory[]
