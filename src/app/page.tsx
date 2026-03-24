@@ -363,8 +363,11 @@ function ViewTracking({ token }: { token: string }) {
       try {
         const res = await fetch(`/api/tracking/${token}`);
         const data = await res.json();
-        if (data.success) {
-          setSessionData(data.session);
+        if (data.success && data.session) {
+          setSessionData({
+            ...data.session,
+            locations: Array.isArray(data.session.locations) ? data.session.locations : []
+          });
         }
         setIsLoading(false);
       } catch (error) {
@@ -379,14 +382,18 @@ function ViewTracking({ token }: { token: string }) {
   }, [token]);
 
   const formatTime = (date: Date | string) => {
-    return new Date(date).toLocaleTimeString('id-ID', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
+    try {
+      return new Date(date).toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+    } catch {
+      return '--:--:--';
+    }
   };
 
-  const lastLocation = sessionData?.locations[0];
+  const lastLocation = sessionData?.locations?.[0];
 
   if (isLoading) {
     return (
@@ -477,20 +484,20 @@ function ViewTracking({ token }: { token: string }) {
                       <div className="space-y-2 text-sm font-mono">
                         <div className="flex justify-between">
                           <span className="text-cyan-400/60">LAT</span>
-                          <span className="text-cyan-300">{lastLocation.latitude.toFixed(6)}</span>
+                          <span className="text-cyan-300">{lastLocation.latitude?.toFixed(6) ?? '-'}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-cyan-400/60">LNG</span>
-                          <span className="text-fuchsia-300">{lastLocation.longitude.toFixed(6)}</span>
+                          <span className="text-fuchsia-300">{lastLocation.longitude?.toFixed(6) ?? '-'}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-cyan-400/60">UPDATE</span>
-                          <span className="text-green-400">{formatTime(lastLocation.timestamp)}</span>
+                          <span className="text-green-400">{lastLocation.timestamp ? formatTime(lastLocation.timestamp) : '--:--:--'}</span>
                         </div>
-                        {lastLocation.accuracy && (
+                        {lastLocation.accuracy != null && (
                           <div className="flex justify-between">
                             <span className="text-cyan-400/60">AKURASI</span>
-                            <span className="text-yellow-400">±{lastLocation.accuracy.toFixed(0)}m</span>
+                            <span className="text-yellow-400">±{lastLocation.accuracy?.toFixed(0) ?? '?'}m</span>
                           </div>
                         )}
                       </div>
@@ -578,7 +585,7 @@ function DashboardContent() {
       try {
         const res = await fetch('/api/tracking/sessions');
         const data = await res.json();
-        if (data.success) {
+        if (data.success && Array.isArray(data.sessions)) {
           setSessions(data.sessions);
           setIsAdminUser(data.user?.isAdmin || false);
         } else if (res.status === 401) {
@@ -834,15 +841,15 @@ function DashboardContent() {
                       </div>
 
                       {/* Location Preview */}
-                      {session.lastLocation && (
+                      {session.lastLocation && session.lastLocation.latitude != null && session.lastLocation.longitude != null && (
                         <div className="mb-3 p-2 rounded-lg bg-black/30 text-xs font-mono border border-cyan-500/20">
                           <div className="flex justify-between">
                             <span className="text-cyan-400/50">LAT:</span>
-                            <span className="text-cyan-300">{session.lastLocation.latitude.toFixed(6)}</span>
+                            <span className="text-cyan-300">{session.lastLocation.latitude?.toFixed(6) ?? '-'}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-cyan-400/50">LNG:</span>
-                            <span className="text-fuchsia-300">{session.lastLocation.longitude.toFixed(6)}</span>
+                            <span className="text-fuchsia-300">{session.lastLocation.longitude?.toFixed(6) ?? '-'}</span>
                           </div>
                         </div>
                       )}

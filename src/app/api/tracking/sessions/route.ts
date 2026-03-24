@@ -8,7 +8,7 @@ export async function GET() {
     
     if (!user) {
       return NextResponse.json(
-        { status: false, message: 'Unauthorized' },
+        { success: false, message: 'Unauthorized' },
         { status: 401 }
       );
     }
@@ -30,7 +30,7 @@ export async function GET() {
 
     if (!response.ok || !data.status) {
       return NextResponse.json(
-        { status: false, message: data.message || 'Failed to fetch sessions' },
+        { success: false, message: data.message || 'Failed to fetch sessions' },
         { status: response.status }
       );
     }
@@ -38,23 +38,23 @@ export async function GET() {
     // PHP response: { status, message, data: [{ id, token, target_name, user_google_id, expire_at, is_active, last_location, last_online }] }
     const sessions = (data.data || []).map((session: Record<string, unknown>) => {
       const lastLocation = session.last_location as Record<string, unknown> | null;
-      const lastOnline = session.last_online as string | null;
+      const lastOnline = session.last_online ? String(session.last_online) : null;
       
       return {
-        id: session.id,
-        name: session.target_name,
-        token: session.token,
-        userId: session.user_google_id,
+        id: String(session.id || ''),
+        name: String(session.target_name || 'Unknown'),
+        token: String(session.token || ''),
+        userId: session.user_google_id ? String(session.user_google_id) : null,
         isActive: session.is_active === 1 || session.is_active === true,
         lastOnline: lastOnline,
-        createdAt: session.created_at || new Date(),
-        expiresAt: session.expire_at,
+        createdAt: session.created_at ? String(session.created_at) : new Date().toISOString(),
+        expiresAt: session.expire_at ? String(session.expire_at) : null,
         isOnline: lastOnline ? (new Date().getTime() - new Date(lastOnline).getTime()) < 30000 : false,
-        lastLocation: lastLocation ? {
-          latitude: lastLocation.latitude as number,
-          longitude: lastLocation.longitude as number,
-          accuracy: lastLocation.accuracy as number | undefined,
-          timestamp: lastLocation.created_at as string,
+        lastLocation: lastLocation && lastLocation.latitude != null ? {
+          latitude: Number(lastLocation.latitude) || 0,
+          longitude: Number(lastLocation.longitude) || 0,
+          accuracy: lastLocation.accuracy ? Number(lastLocation.accuracy) : undefined,
+          timestamp: String(lastLocation.created_at || new Date()),
         } : null,
       };
     });
@@ -70,7 +70,7 @@ export async function GET() {
   } catch (error) {
     console.error('Error fetching sessions:', error);
     return NextResponse.json(
-      { status: false, message: 'Failed to fetch sessions' },
+      { success: false, message: 'Failed to fetch sessions' },
       { status: 500 }
     );
   }

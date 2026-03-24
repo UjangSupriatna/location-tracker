@@ -23,17 +23,17 @@ export async function GET(
 
       if (!response.ok || !data.status) {
         return NextResponse.json(
-          { status: false, message: data.message || 'Session not found' },
+          { success: false, message: data.message || 'Session not found' },
           { status: 404 }
         );
       }
 
       // PHP response: { status, message, data: [{ id, session_id, latitude, longitude, accuracy, created_at }] }
       const locations = (data.data || []).map((loc: Record<string, unknown>) => ({
-        latitude: loc.latitude,
-        longitude: loc.longitude,
-        accuracy: loc.accuracy,
-        timestamp: loc.created_at,
+        latitude: Number(loc.latitude) || 0,
+        longitude: Number(loc.longitude) || 0,
+        accuracy: loc.accuracy ? Number(loc.accuracy) : undefined,
+        timestamp: String(loc.created_at || new Date()),
       }));
 
       return NextResponse.json({
@@ -54,37 +54,46 @@ export async function GET(
 
     if (!response.ok || !data.status) {
       return NextResponse.json(
-        { status: false, message: data.message || 'Session not found' },
+        { success: false, message: data.message || 'Session not found' },
         { status: 404 }
       );
     }
 
     // PHP response: { status, message, data: { id, token, target_name, expire_at, is_active, last_location } }
-    const sessionData = data.data;
+    const sessionData = data.data || {};
     const lastLocation = sessionData.last_location as Record<string, unknown> | null;
 
     // Convert last_location to locations array for compatibility
-    const locations = lastLocation ? [{
-      latitude: lastLocation.latitude,
-      longitude: lastLocation.longitude,
-      accuracy: lastLocation.accuracy,
-      timestamp: lastLocation.created_at,
-    }] : [];
+    let locations: Array<{
+      latitude: number;
+      longitude: number;
+      accuracy?: number;
+      timestamp: string;
+    }> = [];
+
+    if (lastLocation && lastLocation.latitude != null && lastLocation.longitude != null) {
+      locations = [{
+        latitude: Number(lastLocation.latitude) || 0,
+        longitude: Number(lastLocation.longitude) || 0,
+        accuracy: lastLocation.accuracy ? Number(lastLocation.accuracy) : undefined,
+        timestamp: String(lastLocation.created_at || new Date()),
+      }];
+    }
 
     return NextResponse.json({
       success: true,
       session: {
-        id: sessionData.id,
-        name: sessionData.target_name,
-        token: sessionData.token,
-        expiresAt: sessionData.expire_at,
+        id: sessionData.id || '',
+        name: sessionData.target_name || 'Unknown',
+        token: sessionData.token || token,
+        expiresAt: sessionData.expire_at || null,
         locations,
       },
     });
   } catch (error) {
     console.error('Error fetching session:', error);
     return NextResponse.json(
-      { status: false, message: 'Failed to fetch session' },
+      { success: false, message: 'Failed to fetch session' },
       { status: 500 }
     );
   }
