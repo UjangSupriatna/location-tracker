@@ -2,8 +2,8 @@ import { NextAuthOptions } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 
 // API endpoint for external login
-const EXTERNAL_API_URL = 'https://admin.itsacademics.com/api/login_google';
-const API_KEY = 'ITSACAD_LOGIN_7HjK29sPd';
+const EXTERNAL_API_URL = 'https://admin.itsacademics.com/apilogin/login_google';
+const API_KEY = 'ITSACAD_LOGIN_7HjK29sP';
 
 export const authOptions: NextAuthOptions = {
   providers: [
