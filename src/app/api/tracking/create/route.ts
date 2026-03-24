@@ -1,7 +1,6 @@
-import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
-import { randomBytes } from 'crypto';
 import { getAuthUser } from '@/lib/auth-server';
+import { API_ENDPOINTS, API_KEY_PRIVATE } from '@/lib/api';
 
 export async function POST(request: Request) {
   try {
@@ -24,59 +23,38 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate unique token
-    const token = randomBytes(16).toString('hex');
-    
-    // Set expiration to 24 hours from now
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24);
-
-    // Create or update user in database
-    let dbUser = await db.user.findUnique({
-      where: { googleId: user.googleId || '' },
+    // Call external API to create session
+    const response = await fetch(`${API_ENDPOINTS.createSession}?api_key=${API_KEY_PRIVATE}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: name.trim(),
+        user_google_id: user.googleId,
+        user_email: user.email,
+        user_name: user.name,
+      }),
     });
 
-    if (!dbUser) {
-      dbUser = await db.user.create({
-        data: {
-          googleId: user.googleId || '',
-          email: user.email,
-          name: user.name,
-          image: user.image,
-          roleId: user.roleId || 3,
-          externalId: user.externalId,
-        },
-      });
-    } else {
-      // Update user info
-      dbUser = await db.user.update({
-        where: { id: dbUser.id },
-        data: {
-          name: user.name,
-          image: user.image,
-          roleId: user.roleId || dbUser.roleId,
-          externalId: user.externalId,
-        },
-      });
+    const data = await response.json();
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: data.message || 'Failed to create session', success: false },
+        { status: response.status }
+      );
     }
 
-    const session = await db.trackingSession.create({
-      data: {
-        name: name.trim(),
-        token,
-        expiresAt,
-        isActive: true,
-        userId: dbUser.id,
-      },
-    });
+    const sessionData = data.data || data.session || data;
 
     return NextResponse.json({
       success: true,
       session: {
-        id: session.id,
-        name: session.name,
-        token: session.token,
-        expiresAt: session.expiresAt,
+        id: sessionData.id || sessionData.token,
+        name: sessionData.name,
+        token: sessionData.token,
+        expiresAt: sessionData.expires_at || sessionData.expiresAt,
       },
     });
   } catch (error) {

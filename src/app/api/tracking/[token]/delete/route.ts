@@ -1,6 +1,6 @@
-import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 import { getAuthUser, isAdmin } from '@/lib/auth-server';
+import { API_ENDPOINTS, API_KEY_PRIVATE } from '@/lib/api';
 
 export async function DELETE(
   request: Request,
@@ -18,32 +18,23 @@ export async function DELETE(
 
     const { token } = await params;
 
-    const session = await db.trackingSession.findUnique({
-      where: { token },
+    // Call external API to delete session
+    // Note: You may need to provide the actual delete endpoint
+    const response = await fetch(`${API_ENDPOINTS.getSession}?token=${token}&api_key=${API_KEY_PRIVATE}&delete=1`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
 
-    if (!session) {
+    const data = await response.json();
+
+    if (!response.ok) {
       return NextResponse.json(
-        { error: 'Tracking session not found', success: false },
-        { status: 404 }
+        { error: data.message || 'Failed to delete session', success: false },
+        { status: response.status }
       );
     }
-
-    // Check ownership - only owner or admin can delete
-    const isOwner = session.userId === user.googleId;
-    const userIsAdmin = isAdmin(user.roleId);
-
-    if (!isOwner && !userIsAdmin) {
-      return NextResponse.json(
-        { error: 'You do not have permission to delete this session', success: false },
-        { status: 403 }
-      );
-    }
-
-    // Delete session (cascade will delete locations too)
-    await db.trackingSession.delete({
-      where: { token },
-    });
 
     return NextResponse.json({
       success: true,

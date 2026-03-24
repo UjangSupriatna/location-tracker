@@ -1,6 +1,6 @@
-import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 import { getAuthUser, isAdmin } from '@/lib/auth-server';
+import { API_ENDPOINTS, API_KEY_PRIVATE, API_KEY_PUBLIC } from '@/lib/api';
 
 export async function GET() {
   try {
@@ -13,64 +13,54 @@ export async function GET() {
       );
     }
 
-    // Build filter based on role
-    const whereClause: {
-      isActive: boolean;
-      OR: Array<{ expiresAt: null } | { expiresAt: { gt: Date } }>;
-      userId?: string | null;
-    } = {
-      isActive: true,
-      OR: [
-        { expiresAt: null },
-        { expiresAt: { gt: new Date() } },
-      ],
-    };
-
-    // If not admin, only show user's own sessions
-    if (!isAdmin(user.roleId)) {
-      whereClause.userId = user.googleId;
-    }
-    // Admin can see all sessions (no userId filter)
-
-    const sessions = await db.trackingSession.findMany({
-      where: whereClause,
-      include: {
-        locations: {
-          orderBy: { timestamp: 'desc' },
-          take: 1,
-        },
+    // Call external API to get sessions
+    const response = await fetch(`${API_ENDPOINTS.getSession}?api_key=${API_KEY_PRIVATE}&user_google_id=${user.googleId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
       },
-      orderBy: { createdAt: 'desc' },
     });
 
-    const formattedSessions = sessions.map(session => {
-      const lastLocation = session.locations[0];
-      const isOnline = session.lastOnline 
-        ? (new Date().getTime() - session.lastOnline.getTime()) < 30000 // 30 seconds
-        : false;
+    const data = await response.json();
 
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: data.message || 'Failed to fetch sessions', success: false },
+        { status: response.status }
+      );
+    }
+
+    // Format sessions
+    const sessions = (data.data || data.sessions || []).map((session: Record<string, unknown>) => {
+      const lastLocation = session.last_location || session.lastLocation;
+      const lastOnline = session.last_online || session.lastOnline;
+      
       return {
-        id: session.id,
+        id: session.id || session.token,
         name: session.name,
         token: session.token,
-        isActive: session.isActive,
-        lastOnline: session.lastOnline,
-        createdAt: session.createdAt,
-        expiresAt: session.expiresAt,
-        isOnline,
-        userId: session.userId,
+        isActive: session.is_active ?? session.isActive ?? true,
+        lastOnline: lastOnline ? new Date(lastOnline as string) : null,
+        createdAt: session.created_at || session.createdAt || new Date(),
+        expiresAt: session.expires_at || session.expiresAt,
+        isOnline: lastOnline ? (new Date().getTime() - new Date(lastOnline as string).getTime()) < 30000 : false,
         lastLocation: lastLocation ? {
-          latitude: lastLocation.latitude,
-          longitude: lastLocation.longitude,
-          accuracy: lastLocation.accuracy,
-          timestamp: lastLocation.timestamp,
+          latitude: (lastLocation as Record<string, number>).latitude,
+          longitude: (lastLocation as Record<string, number>).longitude,
+          accuracy: (lastLocation as Record<string, number>).accuracy,
+          timestamp: (lastLocation as Record<string, string>).timestamp || new Date(),
         } : null,
       };
     });
 
+    // Filter by user if not admin
+    const filteredSessions = isAdmin(user.roleId) 
+      ? sessions 
+      : sessions.filter((s: { userId?: string }) => !s.userId || s.userId === user.googleId);
+
     return NextResponse.json({
       success: true,
-      sessions: formattedSessions,
+      sessions: filteredSessions,
       user: {
         roleId: user.roleId,
         isAdmin: isAdmin(user.roleId),

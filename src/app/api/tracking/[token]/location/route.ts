@@ -1,5 +1,5 @@
-import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
+import { API_ENDPOINTS, API_KEY_PUBLIC } from '@/lib/api';
 
 export async function POST(
   request: Request,
@@ -12,59 +12,42 @@ export async function POST(
 
     if (typeof latitude !== 'number' || typeof longitude !== 'number') {
       return NextResponse.json(
-        { error: 'Latitude and longitude are required' },
+        { error: 'Latitude and longitude are required', success: false },
         { status: 400 }
       );
     }
 
-    const session = await db.trackingSession.findUnique({
-      where: { token },
-    });
-
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Tracking session not found' },
-        { status: 404 }
-      );
-    }
-
-    // Check if expired
-    if (session.expiresAt && new Date() > session.expiresAt) {
-      return NextResponse.json(
-        { error: 'Tracking link has expired' },
-        { status: 410 }
-      );
-    }
-
-    const location = await db.locationHistory.create({
-      data: {
-        sessionId: session.id,
+    // Call external API to save location
+    const response = await fetch(`${API_ENDPOINTS.saveLocation}?api_key=${API_KEY_PUBLIC}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        token,
         latitude,
         longitude,
-        accuracy: accuracy || null,
-      },
+        accuracy,
+      }),
     });
 
-    // Update session last online
-    await db.trackingSession.update({
-      where: { token },
-      data: { lastOnline: new Date() },
-    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: data.message || 'Failed to save location', success: false },
+        { status: response.status }
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      location: {
-        id: location.id,
-        latitude: location.latitude,
-        longitude: location.longitude,
-        accuracy: location.accuracy,
-        timestamp: location.timestamp,
-      },
+      message: 'Location saved',
     });
   } catch (error) {
-    console.error('Error updating location:', error);
+    console.error('Error saving location:', error);
     return NextResponse.json(
-      { error: 'Failed to update location' },
+      { error: 'Failed to save location', success: false },
       { status: 500 }
     );
   }
